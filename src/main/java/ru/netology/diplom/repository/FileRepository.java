@@ -8,6 +8,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface FileRepository extends JpaRepository<FileData,Long> {
-    List<FileData>findFileDataByUserDataId(long userData_id);
-    FileData findByFileName(String fileName);
+    List<FileData>findFileDataByUserDataEmail(String userName);
+    FileData findByFileNameAndUserDataEmail(String fileName,String email);
 }

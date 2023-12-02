@@ -7,8 +7,9 @@ create table userData(
 create table fileData(
     id serial primary key,
     filename varchar,
-    userData_id int,
-    FOREIGN KEY (userData_id) REFERENCES userdata(id),
+    userData_email varchar,
+    FOREIGN KEY (userData_email) REFERENCES userdata(email),
     date timestamp(6),
+    file_data oid,
     size bigint
 )

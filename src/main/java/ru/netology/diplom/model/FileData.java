@@ -24,17 +24,20 @@ public class FileData {
     private long id;
 
     @JsonProperty("filename")
-    @Column
+    @Column(nullable = false)
     private String fileName;
 
     @Column
     private long size;
-    @Column
+    @Column(nullable = false)
     private LocalDateTime date;
 
     @ManyToOne
-    @JoinColumn(name = "userdata_id")
+    @JoinColumn(name = "userdata_email")
     private UserData userData;
+
+    @Column(nullable = false)
+    private byte [] fileData;
 
     public FileData() {
 

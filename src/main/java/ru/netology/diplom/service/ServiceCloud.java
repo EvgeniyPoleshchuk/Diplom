@@ -2,13 +2,10 @@ package ru.netology.diplom.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import ru.netology.diplom.Token.JWTUtil;
 import ru.netology.diplom.dto.FileResponse;
-import ru.netology.diplom.exceptions.ErrorFileException;
 import ru.netology.diplom.exceptions.ErrorInputDataException;
 import ru.netology.diplom.model.FileData;
 import ru.netology.diplom.model.RenameFile;
@@ -17,21 +14,18 @@ import ru.netology.diplom.repository.FileRepository;
 import ru.netology.diplom.repository.UserRepository;
 
 import java.io.*;
-import java.net.MalformedURLException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @Slf4j
 public class ServiceCloud {
-    private final String fileRepositoryDir = "D:\\allFiles\\"; //Базовая директива для создания хранилища файлов;
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
     private final JWTUtil jwtUtil;
     private String userName;
+    private AtomicInteger count = new AtomicInteger(0);
 
     public ServiceCloud(FileRepository fileRepository, UserRepository userRepository, JWTUtil jwtUtil) {
         this.fileRepository = fileRepository;
@@ -41,82 +35,54 @@ public class ServiceCloud {
 
     public void fileUpload(String token, String name, MultipartFile file) {
         userName = jwtUtil.getUsername(jwtUtil.resolveToken(token));
-        String userDir = fileRepositoryDir + userName;
-        File createDir = new File(userDir);
-        if (createDir.mkdir()) {
-            log.info("Папка нового пользователя успешно создана");
-        }
-        File file1 = new File(createDir + "\\" + name);
-        if (!file.isEmpty()) {
-            try {
-                byte[] bytes = file.getBytes();
-                BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(file1));
-                stream.write(bytes);
-                stream.close();
-                var fileData = FileData.builder()
-                        .fileName(file1.getName())
-                        .size(Math.toIntExact(file1.length()))
-                        .date(LocalDateTime.now())
-                        .userData(userRepository.findByEmail(userName)).build();
-                fileRepository.save(fileData);
-                log.info("Файл {} успешно загружен в хранилище по пути {}", name, userDir);
-            } catch (IOException e) {
-                log.error("Ошибка загрузки файла");
-                throw new ErrorFileException("Ошибка загрузки файла " + e.getMessage());
+        UserData user = userRepository.findByEmail(userName);
+        FileData fileDataFromBd = fileRepository.findByFileNameAndUserDataEmail(name, user.getEmail());
+        FileData fileData;
+        try {
+            fileData = FileData.builder()
+                    .fileName(name)
+                    .size(file.getSize())
+                    .date(LocalDateTime.now())
+                    .fileData(file.getBytes())
+                    .userData(user).build();
+            if (fileDataFromBd != null) {
+                //Если у пользователя уже есть файл с таким именем в БД то добавляет число перед именем.
+                fileData.setFileName("(" + count.incrementAndGet() + ")" + name);
             }
+            fileRepository.save(fileData);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
     public List<FileResponse> allFiles(String token, Integer limit) {
         String name = jwtUtil.resolveToken(token);
-        if(name == null){
+        if (name == null) {
             log.error("Ошибка вывода списка всех файлов");
             throw new ErrorInputDataException("Ошибка вывода списка всех файлов");
         }
         UserData data = userRepository.findByEmail(jwtUtil.getUsername(name));
         log.info("Список файлов успешно выведен на экран");
-        return fileRepository.findFileDataByUserDataId(data.getId()).stream()
+        return fileRepository.findFileDataByUserDataEmail(data.getEmail()).stream()
                 .map(a -> new FileResponse(a.getFileName(), a.getSize())).toList();
     }
 
-    public Resource fileDownload(String name, String token)  {
-        FileData fileData = fileRepository.findByFileName(name);
+    public ByteArrayResource fileDownload(String name, String token) {
         userName = jwtUtil.getUsername(jwtUtil.resolveToken(token));
-        Path path = Paths.get(fileRepositoryDir + userName + "\\" + fileData.getFileName());
-        try {
-            log.info("Файл {} успешно загружен", fileData.getFileName());
-            return new UrlResource(path.toUri());
-        } catch (MalformedURLException e) {
-            log.error("Ошибка загрузки файла");
-            throw new ErrorFileException("Ошибка загрузки файла");
-        }
+        FileData fileData = fileRepository.findByFileNameAndUserDataEmail(name, userName);
+        return new ByteArrayResource(fileData.getFileData());
     }
 
     public void fileDelete(String fileName, String token) {
-        FileData fileData = fileRepository.findByFileName(fileName);
         userName = jwtUtil.getUsername(jwtUtil.resolveToken(token));
-        try {
-            Files.delete(Path.of(fileRepositoryDir + userName + "\\" + fileName));
-        } catch (IOException e) {
-            log.error("Не удалось удалить файл");
-            throw new ErrorFileException("Не удалось удалить файл");
-        }
+        FileData fileData = fileRepository.findByFileNameAndUserDataEmail(fileName, userName);
         fileRepository.delete(fileData);
         log.info("Файл {} успешно удален", fileData.getFileName());
-
     }
 
     public void renameFile(String fileName, RenameFile renameFile, String token) {
-        FileData fileData = fileRepository.findByFileName(fileName);
         userName = jwtUtil.getUsername(jwtUtil.resolveToken(token));
-        String userDir = fileRepositoryDir + userName;
-        Path path = Paths.get(userDir + "\\" + fileData.getFileName());
-        try {
-            Files.move(path, Path.of(userDir + "\\" + renameFile.getFilename()));
-        } catch (IOException e) {
-            log.error("Ошибка переименования файла {}", fileName);
-            throw new ErrorFileException("Не удалось переименовать файл " + e.getMessage());
-        }
+        FileData fileData = fileRepository.findByFileNameAndUserDataEmail(fileName, userName);
         fileData.setFileName(renameFile.getFilename());
         fileRepository.save(fileData);
         log.info("Файл {} успешно переименован в {} ", fileName, renameFile.getFilename());

@@ -34,7 +34,6 @@ public class ControllerFile {
     @GetMapping("/file")
     public ResponseEntity<Resource> fileDownload(@RequestHeader("auth-token") String token,
                                                  @RequestParam("filename") String fileName) {
-
         return ResponseEntity.ok(cloud.fileDownload(fileName, token));
     }
 
