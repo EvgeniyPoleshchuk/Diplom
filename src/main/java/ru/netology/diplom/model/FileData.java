@@ -6,10 +6,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.ToString;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 @AllArgsConstructor
@@ -42,4 +40,5 @@ public class FileData {
     public FileData() {
 
     }
+
 }

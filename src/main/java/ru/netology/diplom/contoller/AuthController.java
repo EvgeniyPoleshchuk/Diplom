@@ -17,7 +17,8 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody AuthRequest authRequest) {
-        return ResponseEntity.ok(service.createAuthenticationToken(authRequest));
+        service.createAuthenticationToken(authRequest);
+        return ResponseEntity.ok(HttpStatus.OK);
     }
 
     @PostMapping("/logout")

@@ -9,7 +9,7 @@ public class UserTokenRepository {
     private Map<String, String> tokenList = new ConcurrentHashMap<>();
 
     public void saveUserToken(String userName, String token) {
-        tokenList.put(userName, token);
+        tokenList.put(token, userName);
     }
 
     public void deleteUserAndToken(String token) {

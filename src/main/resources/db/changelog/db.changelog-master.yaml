@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: migrations/script.sql
+      relativeToChangelogFile: true
+  - include:
+      file: migrations/userDataBase.sql
+      relativeToChangelogFile: true

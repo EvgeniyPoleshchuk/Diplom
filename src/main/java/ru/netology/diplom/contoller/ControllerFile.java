@@ -10,7 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 import ru.netology.diplom.dto.FileResponse;
 import ru.netology.diplom.model.RenameFile;
 import ru.netology.diplom.service.ServiceCloud;
-import java.net.MalformedURLException;
 import java.util.List;
 
 @RestController
